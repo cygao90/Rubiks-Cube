@@ -1,7 +1,7 @@
 use bevy::render::mesh::{Indices, PrimitiveTopology};
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::{prelude::*, tasks::futures_lite::io::Empty};
-use bevy::color::palettes::css;
+use bevy::color::palettes::css::{self, BLACK};
 use std::collections::HashMap;
 use std::default;
 
@@ -35,6 +35,7 @@ pub struct Movement {
 
 #[derive(Component)]
 pub struct Cube {
+    gap: f32,
     coord: [u32; 3],
     colors: HashMap<Face, Color>,
 }
@@ -48,6 +49,7 @@ pub struct Settings {
     color_right: Color,
     color_front: Color,
     color_back: Color,
+    color_beleved: Color,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
@@ -57,7 +59,8 @@ enum Face {
     UP,
     DOWN,
     FRONT,
-    BACK
+    BACK,
+    BEVELED,
 }
 
 impl Default for Settings {
@@ -69,7 +72,8 @@ impl Default for Settings {
             color_up:  Color::Srgba(css::YELLOW),
             color_left: Color::Srgba(css::RED),
             color_back: Color::Srgba(css::BLUE),
-            color_right: Color::Srgba(css::ORANGE)
+            color_right: Color::Srgba(css::ORANGE),
+            color_beleved: Color::Srgba(css::BLACK)
         }
     }
 }
@@ -83,8 +87,10 @@ impl Default for Cube {
         colors.insert(Face::DOWN, Color::BLACK);
         colors.insert(Face::FRONT, Color::BLACK);
         colors.insert(Face::BACK, Color::BLACK); 
+        colors.insert(Face::BEVELED, Color::BLACK);
 
         Cube {
+            gap: 0.1,
             coord: [0; 3],
             colors: colors,
         }
@@ -111,6 +117,7 @@ impl Cube {
         if (self.front_face(setting)) {
             self.colors.insert(Face::FRONT, setting.color_front);
         }
+        self.colors.insert(Face::BEVELED, setting.color_beleved);
     }
 
     #[allow(unused)]
@@ -167,37 +174,41 @@ pub fn setup_cube(
 }
 
 fn create_mesh(cube: &Cube) -> Mesh {
-    let ind = vec![
+
+    let c = (1.0 - cube.gap) / 2.0;
+    let c1 = 0.5;
+
+    let mut vertices = vec![
         // top (facing towards +y)
-        [-0.45, 0.45, -0.45], // vertex with index 0
-        [0.45, 0.45, -0.45], // vertex with index 1
-        [0.45, 0.45, 0.45], // etc. until 23
-        [-0.45, 0.45, 0.45],
+        [-c, c1, -c], // vertex with index 0
+        [c, c1, -c], // vertex with index 1
+        [c, c1, c], // etc. until 23
+        [-c, c1, c],
         // bottom   (-y)
-        [-0.45, -0.45, -0.45],
-        [0.45, -0.45, -0.45],
-        [0.45, -0.45, 0.45],
-        [-0.45, -0.45, 0.45],
+        [-c, -c1, -c],
+        [c, -c1, -c],
+        [c, -c1, c],
+        [-c, -c1, c],
         // right    (+x)
-        [0.45, -0.45, -0.45],
-        [0.45, -0.45, 0.45],
-        [0.45, 0.45, 0.45], // This vertex is at the same position as vertex with index 2, but they'll have different UV and normal
-        [0.45, 0.45, -0.45],
+        [c1, -c, -c],
+        [c1, -c, c],
+        [c1, c, c], // This vertex is at the same position as vertex with index 2, but they'll have different UV and normal
+        [c1, c, -c],
         // left     (-x)
-        [-0.45, -0.45, -0.45],
-        [-0.45, -0.45, 0.45],
-        [-0.45, 0.45, 0.45],
-        [-0.45, 0.45, -0.45],
-        // back     (+z)
-        [-0.45, -0.45, 0.45],
-        [-0.45, 0.45, 0.45],
-        [0.45, 0.45, 0.45],
-        [0.45, -0.45, 0.45],
-        // forward  (-z)
-        [-0.45, -0.45, -0.45],
-        [-0.45, 0.45, -0.45],
-        [0.45, 0.45, -0.45],
-        [0.45, -0.45, -0.45],
+        [-c1, -c, -c],
+        [-c1, -c, c],
+        [-c1, c, c],
+        [-c1, c, -c],
+        // back     (+z) front
+        [-c, -c, c1],
+        [-c, c, c1],
+        [c, c, c1],
+        [c, -c, c1],
+        // forward  (-z) back
+        [-c, -c, -c1],
+        [-c, c, -c1],
+        [c, c, -c1],
+        [c, -c, -c1],
     ];
 
     let color_up = cube.colors.get(&Face::UP).unwrap().to_linear().to_f32_array();
@@ -206,8 +217,9 @@ fn create_mesh(cube: &Cube) -> Mesh {
     let color_left = cube.colors.get(&Face::LEFT).unwrap().to_linear().to_f32_array();
     let color_front = cube.colors.get(&Face::FRONT).unwrap().to_linear().to_f32_array();
     let color_back = cube.colors.get(&Face::BACK).unwrap().to_linear().to_f32_array();
+    let color_beveled = cube.colors.get(&Face::BEVELED).unwrap().to_linear().to_f32_array();
 
-    let colors = vec![
+    let mut colors = vec![
         color_up,
         color_up,
         color_up,
@@ -239,7 +251,7 @@ fn create_mesh(cube: &Cube) -> Mesh {
         color_back,
     ];
 
-    let normals = vec![
+    let mut normals = vec![
         // Normals for the top side (towards +y)
         [0.0, 1.0, 0.0],
         [0.0, 1.0, 0.0],
@@ -272,18 +284,61 @@ fn create_mesh(cube: &Cube) -> Mesh {
         [0.0, 0.0, -1.0],
     ];
 
-    let indices = Indices::U32(vec![
+    let mut indices: Vec<u32> = vec![
         0,3,1 , 1,3,2, // triangles making up the top (+y) facing side.
         4,5,7 , 5,6,7, // bottom (-y)
         8,11,9 , 9,11,10, // right (+x)
         12,13,15 , 13,14,15, // left (-x)
         16,19,17 , 17,19,18, // back (+z)
         20,21,23 , 21,22,23, // forward (-z)
-    ]);
+    ];
+
+    let beveled_corners: Vec<[u32; 3]> = vec![
+        [0, 21, 15], // 24 25 26
+        [1, 11, 22], // 27 28 29
+        [2, 18, 10], // 30 31 32
+        [3, 14, 17], // 33 34 35
+        [4, 12, 20], // 36 37 38
+        [5, 23, 8], // 39 40 41
+        [6, 9, 19], // 42 43 44
+        [7, 16, 13], // 45 46 47
+    ];
+    for v in beveled_corners {
+        let corner_vertices: Vec<[f32; 3]> = v.iter().map(|&idx| vertices[idx as usize]).collect();
+        let normals_: Vec<[f32; 3]> = v.iter().map(|&idx| normals[idx as usize]).collect();
+        let corner_colors = vec![color_beveled; 3];
+        let len: u32 = vertices.len() as u32;
+        indices.extend_from_slice(&[len, len + 1, len + 2]);
+        vertices.extend_from_slice(&corner_vertices);
+        normals.extend_from_slice(&normals_);
+        colors.extend_from_slice(&corner_colors);
+    }
+
+    let beveled_edges = vec![
+        [24, 27, 29, 25],
+        [27, 30, 32, 28],
+        [24, 26, 34, 33],
+        [30, 33, 35, 31],
+        [36, 38, 40, 39],
+        [42, 44, 46, 45],
+        [36, 45, 47, 37],
+        [43, 42, 39, 41],
+        [38, 37, 26, 25],
+        [28, 41, 40, 29],
+        [31, 44, 43, 32],
+        [34, 47, 46, 35],
+    ];
+
+    for edge in beveled_edges {
+        let t1: Vec<u32> = [0, 1, 2].iter().map(|&idx| edge[idx]).collect();
+        let t2: Vec<u32> = [0, 2, 3].iter().map(|&idx| edge[idx]).collect();
+        indices.extend_from_slice(&t1);
+        indices.extend_from_slice(&t2);
+    }
 
     Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::MAIN_WORLD | RenderAssetUsages::RENDER_WORLD)
-        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, ind)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
         .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
         .with_inserted_attribute(Mesh::ATTRIBUTE_COLOR, colors)
-        .with_inserted_indices(indices)
+        .with_inserted_indices(Indices::U32(indices))
 }
