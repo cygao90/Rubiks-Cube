@@ -146,6 +146,7 @@ pub fn setup_cube(
 
     let settings = Settings::default();
     let layers = settings.layers;
+    let center = layers as f32 / 2.0;
 
     for x in 0..layers {
         for y in 0..layers {
@@ -159,7 +160,11 @@ pub fn setup_cube(
                     PbrBundle {
                         mesh: meshes.add(create_mesh(&cube)),
                         material: materials.add(StandardMaterial::default()),
-                        transform: Transform::from_translation(Vec3::new(x as f32, y as f32, z as f32)),
+                        transform: Transform::from_xyz(
+                            x as f32 - center + 0.5,
+                            y as f32 - center + 0.5,
+                            z as f32 - center + 0.5,
+                        ),
                         ..default()
                     },
                     cube,
