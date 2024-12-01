@@ -1,4 +1,4 @@
-use bevy::{input::{mouse::{MouseButtonInput, MouseMotion}, ButtonState}, prelude::{EventReader, MouseButton}, transform::commands, window::{CursorGrabMode, CursorMoved}};
+use bevy::{input::{mouse::{MouseButtonInput, MouseMotion}, ButtonState}, prelude::{EventReader, MouseButton}, transform::{self, commands}, window::{CursorGrabMode, CursorMoved}};
 
 use bevy::prelude::*;
 
@@ -37,7 +37,23 @@ pub fn rotate(
 }
 
 fn process_rotation(obj: &mut Transform, delta: &Vec2) {
-    let c = 0.05;
-    obj.rotate_x(delta.x * c);
-    obj.rotate_y(delta.y * c);
+    let c = 0.005;
+    // obj.rotate_x(delta.x * c);
+    // obj.rotate_y(delta.y * c);
+    let quat_y = Quat::from_euler(
+        EulerRot::XYZ,
+        delta.y * c,
+        0.0,
+        -delta.y * c,
+    );
+
+    let quat_x = Quat::from_euler(
+        EulerRot::XYZ,
+        0.0,
+        delta.x * c,
+        0.0
+    );
+
+    obj.rotate(quat_x);
+    obj.rotate(quat_y);
 }
