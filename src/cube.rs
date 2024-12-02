@@ -8,18 +8,14 @@ use std::default;
 #[derive(Component)]
 pub struct Rotator;
 
-#[derive(Clone, Copy, PartialEq)]
-pub enum Layer {
-    Left,
-    M,
-    Right,
-    Up,
-    E,
-    Down,
-    Front,
-    S,
-    Back,
-}
+#[derive(Component)]
+pub struct RotateX;
+
+#[derive(Component)]
+pub struct RotateY;
+
+#[derive(Component)]
+pub struct RotateZ;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Direction {
@@ -28,16 +24,30 @@ pub enum Direction {
 }
 
 #[derive(Clone, Copy, PartialEq)]
+pub enum RotateAxis {
+    X, Y, Z
+}
+
+#[derive(Clone, Copy, PartialEq)]
 pub struct Movement {
-    layer: Layer,
-    direction: Direction,
+    pub axis: RotateAxis,
+    pub layer: u32,
+    pub direction: Direction,
 }
 
 #[derive(Component)]
 pub struct Cube {
-    gap: f32,
-    coord: [u32; 3],
+    pub gap: f32,
+    pub coord: [u32; 3],
     colors: HashMap<Face, Color>,
+}
+
+#[derive(Resource)]
+pub struct CubeInfo {
+    pub cubes: Vec<Entity>,
+    pub x: Option<Entity>,
+    pub y: Option<Entity>,
+    pub z: Option<Entity>,
 }
 
 #[derive(Clone, Copy)]
@@ -131,10 +141,22 @@ impl Cube {
     fn front_face(&self, setting: &Settings) -> bool { self.coord[2] == setting.layers - 1 }
 }
 
+impl Default for CubeInfo {
+    fn default() -> Self {
+        CubeInfo {
+            cubes: Vec::new(),
+            x: None,
+            y: None,
+            z: None,
+        }
+    }
+}
+
 pub fn setup_cube(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>, 
-    mut materials: ResMut<Assets<StandardMaterial>>
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut cube_info: ResMut<CubeInfo>,
 ) {
     let rotator = commands.spawn((
         PbrBundle {
@@ -167,15 +189,44 @@ pub fn setup_cube(
                         ),
                         ..default()
                     },
-                    cube,
+                    cube
                 ))
                 .id();
 
                 commands.entity(rotator).push_children(&[id]);
+                cube_info.cubes.push(id);
 
             }
         }
     }
+
+    commands.entity(rotator).with_children(|parent| {
+        let x = parent.spawn((
+            TransformBundle {
+                local: Transform::from_xyz(1.0, 0.0, 0.0),
+                ..default()
+            },
+            RotateX
+        )).id();
+        let y = parent.spawn((
+            TransformBundle {
+                local: Transform::from_xyz(0.0, 1.0, 0.0),
+                ..default()
+            },
+            RotateY
+        )).id();
+        let z = parent.spawn((
+            TransformBundle {
+                local: Transform::from_xyz(0.0, 0.0, 1.0),
+                ..default()
+            },
+            RotateZ
+        )).id();
+
+        cube_info.x = Some(x);
+        cube_info.y = Some(y);
+        cube_info.z = Some(z);
+    });
 }
 
 fn create_mesh(cube: &Cube) -> Mesh {
