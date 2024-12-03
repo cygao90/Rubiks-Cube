@@ -1,9 +1,12 @@
 use bevy::render::mesh::{Indices, PrimitiveTopology};
 use bevy::render::render_asset::RenderAssetUsages;
-use bevy::{prelude::*, tasks::futures_lite::io::Empty};
-use bevy::color::palettes::css::{self, BLACK};
+use bevy::prelude::*;
 use std::collections::HashMap;
-use std::default;
+use bevy_mod_picking::prelude::*;
+use bevy_mod_picking::backends::raycast::RaycastPickable;
+
+use crate::{actions, Settings};
+use bevy::color::palettes::css;
 
 #[derive(Component)]
 pub struct Rotator;
@@ -17,18 +20,19 @@ pub struct RotateY;
 #[derive(Component)]
 pub struct RotateZ;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Direction {
+    // facing the negative direction
     Clockwise,
     CounterClockwise,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum RotateAxis {
     X, Y, Z
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Movement {
     pub axis: RotateAxis,
     pub layer: u32,
@@ -50,18 +54,6 @@ pub struct CubeInfo {
     pub z: Option<Entity>,
 }
 
-#[derive(Clone, Copy)]
-pub struct Settings {
-    layers: u32,
-    color_up: Color,
-    color_down: Color,
-    color_left: Color,
-    color_right: Color,
-    color_front: Color,
-    color_back: Color,
-    color_beleved: Color,
-}
-
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 enum Face {
     LEFT,
@@ -71,21 +63,6 @@ enum Face {
     FRONT,
     BACK,
     BEVELED,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Settings {
-            layers: 3,
-            color_down: Color::Srgba(css::WHITE),
-            color_front: Color::Srgba(css::GREEN),
-            color_up:  Color::Srgba(css::YELLOW),
-            color_left: Color::Srgba(css::RED),
-            color_back: Color::Srgba(css::BLUE),
-            color_right: Color::Srgba(css::ORANGE),
-            color_beleved: Color::Srgba(css::BLACK)
-        }
-    }
 }
 
 impl Default for Cube {
@@ -157,6 +134,7 @@ pub fn setup_cube(
     mut meshes: ResMut<Assets<Mesh>>, 
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut cube_info: ResMut<CubeInfo>,
+    settings: Res<Settings>,
 ) {
     let rotator = commands.spawn((
         PbrBundle {
@@ -166,7 +144,6 @@ pub fn setup_cube(
         Rotator,
     )).id();
 
-    let settings = Settings::default();
     let layers = settings.layers;
     let center = layers as f32 / 2.0;
 
@@ -189,6 +166,12 @@ pub fn setup_cube(
                         ),
                         ..default()
                     },
+                    PickableBundle::default(),
+                    RaycastPickable::default(),
+                    On::<Pointer<DragStart>>::run(actions::handle_drag_start),
+                    On::<Pointer<Move>>::run(actions::handle_drag_move),
+                    On::<Pointer<DragEnd>>::run(actions::handle_drag_end),
+                    HIGHLIGHT_TINT,
                     cube
                 ))
                 .id();
@@ -226,6 +209,61 @@ pub fn setup_cube(
         cube_info.x = Some(x);
         cube_info.y = Some(y);
         cube_info.z = Some(z);
+    });
+
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Mesh::from(Capsule3d {
+            radius: 0.05,
+            half_length: 10.0,
+            ..Default::default()
+        })),
+        material: materials.add(StandardMaterial {
+            base_color: Color::Srgba(css::RED),
+            ..Default::default()
+        }),
+        transform: Transform {
+            translation: Vec3::new(2.5, 0.0, 0.0),
+            rotation: Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2), // Rotate along Z-axis
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    // Y-Axis (Green)
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Mesh::from(Capsule3d {
+            radius: 0.05,
+            half_length: 10.0,
+            ..Default::default()
+        })),
+        material: materials.add(StandardMaterial {
+            base_color: Color::Srgba(css::GREEN),
+            ..Default::default()
+        }),
+        transform: Transform {
+            translation: Vec3::new(0.0, 2.5, 0.0),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    // Z-Axis (Blue)
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(Mesh::from(Capsule3d {
+            radius: 0.05,
+            half_length: 10.0,
+            ..Default::default()
+        })),
+        material: materials.add(StandardMaterial {
+            base_color: Color::Srgba(css::BLUE),
+            ..Default::default()
+        }),
+        transform: Transform {
+            translation: Vec3::new(0.0, 0.0, 2.5),
+            rotation: Quat::from_rotation_x(std::f32::consts::FRAC_PI_2), // Rotate along X-axis
+            ..Default::default()
+        },
+        ..Default::default()
     });
 }
 
@@ -398,3 +436,23 @@ fn create_mesh(cube: &Cube) -> Mesh {
         .with_inserted_attribute(Mesh::ATTRIBUTE_COLOR, colors)
         .with_inserted_indices(Indices::U32(indices))
 }
+
+
+const HIGHLIGHT_TINT: Highlight<StandardMaterial> = Highlight {
+    hovered: Some(HighlightKind::new_dynamic(|matl| StandardMaterial {
+        base_color: matl
+            .base_color
+            .mix(&Color::srgba(0.0, 0.0, 0.0, 0.8), 0.3),
+        ..matl.to_owned()
+    })),
+    pressed: Some(HighlightKind::new_dynamic(|matl| StandardMaterial {
+        base_color: matl
+            .base_color
+            .mix(&Color::srgba(0.0, 0.0, 0.0, 0.8), 0.4),
+        ..matl.to_owned()
+    })),
+    selected: Some(HighlightKind::new_dynamic(|matl| StandardMaterial {
+        base_color: matl.base_color,
+        ..matl.to_owned()
+    })),
+};
