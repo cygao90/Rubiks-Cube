@@ -1,20 +1,23 @@
 use std::collections::VecDeque;
 
-use bevy::color::palettes::css;
 use actions::ActionStatus;
 use bevy::prelude::*;
-use bevy_mod_picking::{highlight::{ Highlight , HighlightKind}, prelude::DefaultHighlightingPlugin, DefaultPickingPlugins};
+use bevy_egui::EguiPlugin;
+use bevy_mod_picking::DefaultPickingPlugins;
 use cube::CubeInfo;
 
 mod camera;
 mod cube;
 mod actions;
+mod ui;
+mod settings;
 
 fn main() {
     App::new()
     .add_plugins((
         DefaultPlugins,
-        DefaultPickingPlugins
+        DefaultPickingPlugins,
+        EguiPlugin,
     ))
     .insert_resource(CubeInfo::default())
     .insert_resource(ActionStatus { 
@@ -25,13 +28,16 @@ fn main() {
         drag_end: None,
         selected_entity: None,
     })
-    .insert_resource(Settings::default())
+    .insert_resource(AmbientLight {
+        brightness: 150.0,
+        ..default()
+    })
+    .insert_resource(settings::Settings::default())
     .add_systems(
         Startup, 
         (
             camera::setup_camera, 
             cube::setup_cube,
-            actions::gen_random_movements,
         )
     )
     .add_systems(
@@ -39,36 +45,10 @@ fn main() {
         (
             camera::handle_view,
             actions::frame_handler,
+            ui::update_ui,
         )
     )
     .run();
 }
 
-
-#[derive(Resource)]
-pub struct Settings {
-    pub layers: u32,
-    pub color_up: Color,
-    pub color_down: Color,
-    pub color_left: Color,
-    pub color_right: Color,
-    pub color_front: Color,
-    pub color_back: Color,
-    pub color_beleved: Color,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Settings {
-            layers: 3,
-            color_down: Color::Srgba(css::WHITE),
-            color_front: Color::Srgba(css::GREEN),
-            color_up:  Color::Srgba(css::YELLOW),
-            color_left: Color::Srgba(css::RED),
-            color_back: Color::Srgba(css::BLUE),
-            color_right: Color::Srgba(css::ORANGE),
-            color_beleved: Color::Srgba(css::BLACK)
-        }
-    }
-}
 

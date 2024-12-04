@@ -1,4 +1,5 @@
 use bevy::{input::{mouse::{MouseButtonInput, MouseMotion}, ButtonState}, prelude::*, window::CursorGrabMode};
+use crate::settings::Settings;
 
 pub fn setup_camera(
     mut commands: Commands,
@@ -16,7 +17,8 @@ pub fn handle_view(
     mut windows: Query<&mut Window>,
     mut mouse_button_input_events: EventReader<MouseButtonInput>,
     mut mouse_motion_events: EventReader<MouseMotion>,
-    mut camera: Query<&mut Transform, With<Camera>>
+    mut camera: Query<&mut Transform, With<Camera>>,
+    settings: Res<Settings>,
 ) {
     let mut window = windows.single_mut();
 
@@ -37,14 +39,14 @@ pub fn handle_view(
     for event in mouse_motion_events.read() {
         if window.cursor.grab_mode == CursorGrabMode::Locked {
             info!("{:?}", event);
-            process_rotation(&mut camera.single_mut(), &event.delta);
+            process_rotation(&mut camera.single_mut(), &event.delta, &settings);
         }
     }
     mouse_motion_events.clear();
 }
 
-fn process_rotation(camera: &mut Transform, delta: &Vec2) {
-    let c = 0.005;
+fn process_rotation(camera: &mut Transform, delta: &Vec2, settings: &Settings) {
+    let c = settings.view_rotation_speed / 4000.0;
     if delta.x.abs() <= delta.y.abs() {
         let quat_y = Quat::from_euler(
             EulerRot::XYZ,

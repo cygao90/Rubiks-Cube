@@ -5,8 +5,7 @@ use std::collections::HashMap;
 use bevy_mod_picking::prelude::*;
 use bevy_mod_picking::backends::raycast::RaycastPickable;
 
-use crate::{actions, Settings};
-use bevy::color::palettes::css;
+use crate::{actions, settings::Settings};
 
 #[derive(Component)]
 pub struct Rotator;
@@ -89,19 +88,19 @@ impl Cube {
         if self.down_dace(setting) {
             self.colors.insert(Face::DOWN, setting.color_down);
         }
-        if (self.up_face(setting)) {
+        if self.up_face(setting) {
             self.colors.insert(Face::UP, setting.color_up);
         }
-        if (self.left_face(setting)) {
+        if self.left_face(setting) {
             self.colors.insert(Face::LEFT, setting.color_left);
         }
-        if (self.right_face(setting)) {
+        if self.right_face(setting) {
             self.colors.insert(Face::RIGHT, setting.color_right);
         }
-        if (self.back_face(setting)) {
+        if self.back_face(setting) {
             self.colors.insert(Face::BACK, setting.color_back);
         }
-        if (self.front_face(setting)) {
+        if self.front_face(setting) {
             self.colors.insert(Face::FRONT, setting.color_front);
         }
         self.colors.insert(Face::BEVELED, setting.color_beleved);
@@ -150,6 +149,12 @@ pub fn setup_cube(
     for x in 0..layers {
         for y in 0..layers {
             for z in 0..layers {
+
+                if x != 0 && x != layers - 1 &&
+                    y != 0 && y != layers - 1 &&
+                    z != 0 && z != layers - 1 {
+                    continue;
+                }
 
                 let mut cube = Cube::default();
                 cube.coord = [x, y, z];
@@ -211,60 +216,6 @@ pub fn setup_cube(
         cube_info.z = Some(z);
     });
 
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(Capsule3d {
-            radius: 0.05,
-            half_length: 10.0,
-            ..Default::default()
-        })),
-        material: materials.add(StandardMaterial {
-            base_color: Color::Srgba(css::RED),
-            ..Default::default()
-        }),
-        transform: Transform {
-            translation: Vec3::new(2.5, 0.0, 0.0),
-            rotation: Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2), // Rotate along Z-axis
-            ..Default::default()
-        },
-        ..Default::default()
-    });
-
-    // Y-Axis (Green)
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(Capsule3d {
-            radius: 0.05,
-            half_length: 10.0,
-            ..Default::default()
-        })),
-        material: materials.add(StandardMaterial {
-            base_color: Color::Srgba(css::GREEN),
-            ..Default::default()
-        }),
-        transform: Transform {
-            translation: Vec3::new(0.0, 2.5, 0.0),
-            ..Default::default()
-        },
-        ..Default::default()
-    });
-
-    // Z-Axis (Blue)
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(Capsule3d {
-            radius: 0.05,
-            half_length: 10.0,
-            ..Default::default()
-        })),
-        material: materials.add(StandardMaterial {
-            base_color: Color::Srgba(css::BLUE),
-            ..Default::default()
-        }),
-        transform: Transform {
-            translation: Vec3::new(0.0, 0.0, 2.5),
-            rotation: Quat::from_rotation_x(std::f32::consts::FRAC_PI_2), // Rotate along X-axis
-            ..Default::default()
-        },
-        ..Default::default()
-    });
 }
 
 fn create_mesh(cube: &Cube) -> Mesh {

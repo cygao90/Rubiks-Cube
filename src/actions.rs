@@ -1,12 +1,11 @@
 use std::{collections::VecDeque, f32::consts::FRAC_PI_2};
-use bevy::{input::{mouse::{MouseButtonInput, MouseMotion}, ButtonState}, prelude::{EventReader, MouseButton}, window::CursorGrabMode};
 
 use bevy::prelude::*;
 use bevy_mod_picking::prelude::*;
 use bevy_mod_picking::prelude::Listener;
 use bevy::math::Vec3;
 use rand::Rng;
-use crate::{cube::{Cube, CubeInfo, Direction, Movement, RotateAxis, RotateX, RotateY, RotateZ, Rotator}, Settings};
+use crate::{cube::{Cube, CubeInfo, Direction, Movement, RotateAxis, RotateX, RotateY, RotateZ}, settings::Settings};
 
 #[derive(Resource)]
 pub struct ActionStatus {
@@ -37,8 +36,9 @@ pub fn handle_drag_move(
     rz: Query<&Transform, With<RotateZ>>,
     cubes: Query<&Cube>,
     mut status: ResMut<ActionStatus>,
+    settings: Res<Settings>
 ) {
-    let c = 0.8;
+    let c = settings.rotation_trigger_value;
     if !(status.drag_start.is_some() && status.drag_end.is_none()) {
         return;
     }
@@ -123,7 +123,7 @@ pub fn frame_handler(
     settings: Res<Settings>
 ) {
 
-    let c = 2.0;
+    let c = settings.layer_rotation_speed;
 
     if status.action_queue.is_empty() && status.cur_action.is_none() {
         return;
@@ -200,33 +200,25 @@ fn adjust_coords(cube: &mut Cube, movement: &Movement, settings: &Settings) {
     // info!("{:?} -> {:?}", old, cube.coord);
 }
 
-pub fn gen_random_movements(
-    mut status: ResMut<ActionStatus>
-) {
-    // let mut rng = rand::thread_rng();
-    // let axis = vec![RotateAxis::X, RotateAxis::Y, RotateAxis::Z];
-    // let dirs = vec![Direction::Clockwise, Direction::CounterClockwise];
-    // for _ in 0..10 {
-    //     status.action_queue.push_back(Movement {
-    //         axis: axis[rng.gen_range(0..3)],
-    //         layer: rng.gen_range(0..3),
-    //         direction: dirs[rng.gen_range(0..2)]
-    //     });
-    // }
-    // status.action_queue.push_back(Movement {
-    //     axis: RotateAxis::X,
-    //     layer: 2,
-    //     direction: Direction::Clockwise,
-    // });
-
-    // status.action_queue.push_back(Movement {
-    //     axis: RotateAxis::Z,
-    //     layer: 0,
-    //     direction: Direction::Clockwise,
-    // });
-    // status.action_queue.push_back(Movement {
-    //     axis: RotateAxis::X,
-    //     layer: 2,
-    //     direction: Direction::Clockwise,
-    // });
+pub fn gen_random_movements(steps: u32) -> VecDeque<Movement> {
+    let mut rng = rand::thread_rng();
+    let axis = vec![RotateAxis::X, RotateAxis::Y, RotateAxis::Z];
+    let dirs = vec![Direction::Clockwise, Direction::CounterClockwise];
+    let mut ret: VecDeque<Movement> = VecDeque::new();
+    let mut pre = None;
+    let mut cnt = 0;
+    while cnt < steps {
+        let next = Movement {
+            axis: axis[rng.gen_range(0..3)],
+            layer: rng.gen_range(0..3),
+            direction: dirs[rng.gen_range(0..2)]
+        };
+        if pre.is_some() && pre.unwrap() == next {
+            continue;
+        }
+        ret.push_back(next);
+        pre = Some(next);
+        cnt += 1;
+    }
+    ret
 }
