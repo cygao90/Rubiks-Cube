@@ -205,7 +205,6 @@ pub fn gen_random_movements(steps: u32) -> VecDeque<Movement> {
     let axis = vec![RotateAxis::X, RotateAxis::Y, RotateAxis::Z];
     let dirs = vec![Direction::Clockwise, Direction::CounterClockwise];
     let mut ret: VecDeque<Movement> = VecDeque::new();
-    let mut pre = None;
     let mut cnt = 0;
     while cnt < steps {
         let next = Movement {
@@ -213,11 +212,7 @@ pub fn gen_random_movements(steps: u32) -> VecDeque<Movement> {
             layer: rng.gen_range(0..3),
             direction: dirs[rng.gen_range(0..2)]
         };
-        if pre.is_some() && pre.unwrap() == next {
-            continue;
-        }
         ret.push_back(next);
-        pre = Some(next);
         cnt += 1;
     }
     ret
