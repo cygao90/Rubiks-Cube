@@ -163,7 +163,10 @@ pub fn setup_cube(
                 let id = commands.spawn((
                     PbrBundle {
                         mesh: meshes.add(create_mesh(&cube)),
-                        material: materials.add(StandardMaterial::default()),
+                        material: materials.add(StandardMaterial {
+                            unlit: true,
+                            ..default()
+                        }),
                         transform: Transform::from_xyz(
                             x as f32 - center + 0.5,
                             y as f32 - center + 0.5,

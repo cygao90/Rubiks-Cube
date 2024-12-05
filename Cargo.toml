@@ -1,5 +1,5 @@
 [package]
-name = "MagicCube"
+name = "Rubiks-Cube"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,3 +10,6 @@ bevy = "0.14.2"
 bevy_mod_picking = "0.20.1"
 rand = "*"
 bevy_egui = "0.30"
+
+[target.wasm32-unknown-unknown]
+runner = "wasm-server-runner"

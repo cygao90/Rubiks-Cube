@@ -28,10 +28,6 @@ fn main() {
         drag_end: None,
         selected_entity: None,
     })
-    .insert_resource(AmbientLight {
-        brightness: 150.0,
-        ..default()
-    })
     .insert_resource(settings::Settings::default())
     .add_systems(
         Startup, 
