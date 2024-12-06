@@ -13,9 +13,6 @@ mod ui;
 mod settings;
 mod solver;
 
-#[macro_use(lazy_static)]
-extern crate lazy_static;
-
 fn main() {
     App::new()
     .add_plugins((
@@ -47,7 +44,6 @@ fn main() {
             camera::handle_view,
             actions::frame_handler,
             ui::update_ui,
-            ui::handle_solve_complete,
         )
     )
     .run();

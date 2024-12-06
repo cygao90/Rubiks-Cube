@@ -1,9 +1,6 @@
 use bevy::color::Color;
-use bevy::prelude::*;
-
-use crate::cube::{Cube, Direction, Face, Movement, RotateAxis};
-
 use kewb::{CubieCube, DataTable, FaceCube, Move, Solver};
+use crate::cube::{Cube, Direction, Face, Movement, RotateAxis};
 //              |************|
 //              |*U1**U2**U3*|
 //              |************|
@@ -219,12 +216,11 @@ fn generate_moves_from_string(moves: Vec<Move>) -> Vec<Movement> {
     ret
 }
 
-pub fn solve(
+pub async fn solve(
     cubes: Vec<Cube>,
 ) -> Vec<Movement> {
     let cube_state = CubeState::from(&cubes);
     let state_str = cube_state_to_string(&cubes, &cube_state);
-    info!("{}", state_str);
     let state = CubieCube::try_from(&FaceCube::try_from(state_str.as_str()).unwrap()).unwrap();
     let table = DataTable::default();
     let mut solver = Solver::new(&table, 23, None);

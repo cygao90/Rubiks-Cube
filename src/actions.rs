@@ -42,7 +42,7 @@ pub fn handle_drag_move(
     mut status: ResMut<ActionStatus>,
     settings: Res<Settings>
 ) {
-    if status.computing_solution {
+    if status.computing_solution || !status.action_queue.is_empty() {
         return;
     }
 
