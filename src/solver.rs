@@ -223,6 +223,6 @@ pub async fn solve(
     let state_str = cube_state_to_string(&cubes, &cube_state);
     let state = CubieCube::try_from(&FaceCube::try_from(state_str.as_str()).unwrap()).unwrap();
     let table = DataTable::default();
-    let mut solver = Solver::new(&table, 23, None);
+    let mut solver = Solver::new(&table, 23);
     generate_moves_from_string(solver.solve(state).unwrap().get_all_moves())
 }

@@ -1,7 +1,4 @@
-use std::{
-    fmt,
-    time::{Duration, Instant},
-};
+use std::fmt;
 
 use crate::cube::{
     cubie::CubieCube,
@@ -171,7 +168,6 @@ impl Solution {
 pub struct Solver<'a> {
     data_table: &'a DataTable,
     max_length: u8,
-    timeout: Option<Duration>,
     initial_state: CubieCube,
     solution_phase1: Vec<Move>,
     solution_phase2: Vec<Move>,
@@ -179,14 +175,12 @@ pub struct Solver<'a> {
 }
 
 impl<'a> Solver<'a> {
-    pub fn new(data_table: &'a DataTable, max_length: u8, timeout: Option<f32>) -> Self {
-        let timeout = timeout.map(Duration::from_secs_f32);
+    pub fn new(data_table: &'a DataTable, max_length: u8) -> Self {
 
         Self {
             data_table,
             initial_state: CubieCube::default(),
             max_length,
-            timeout,
             solution_phase1: vec![],
             solution_phase2: vec![],
             best_solution: None,
@@ -205,17 +199,11 @@ impl<'a> Solver<'a> {
     pub fn solve(&mut self, state: CubieCube) -> Option<Solution> {
         self.initial_state = state;
 
-        let start = Instant::now();
-
         for depth in 0..=self.max_length {
             let state = Phase1State::from(state);
-            let found = self.solve_phase1(state, depth, start);
+            let found = self.solve_phase1(state, depth);
 
-            if let Some(timeout) = self.timeout {
-                if start.elapsed() > timeout {
-                    return self.best_solution.clone();
-                }
-            } else if found {
+            if found {
                 return self.best_solution.clone();
             }
         }
@@ -223,13 +211,7 @@ impl<'a> Solver<'a> {
         None
     }
 
-    fn solve_phase1(&mut self, state: Phase1State, depth: u8, time: Instant) -> bool {
-        if let Some(timeout) = self.timeout {
-            if time.elapsed() > timeout {
-                return true;
-            }
-        }
-
+    fn solve_phase1(&mut self, state: Phase1State, depth: u8) -> bool {
         if depth == 0 && state.is_solved() {
             let mut cube_state = self.initial_state;
 
@@ -250,7 +232,7 @@ impl<'a> Solver<'a> {
 
             for phase2_depth in 0..max_depth {
                 let state = Phase2State::from(cube_state);
-                if self.solve_phase2(state, phase2_depth, time) {
+                if self.solve_phase2(state, phase2_depth) {
                     return true;
                 }
             }
@@ -272,7 +254,7 @@ impl<'a> Solver<'a> {
             self.solution_phase1.push(*m);
 
             let new_state = state.next(&self.data_table.move_table, i);
-            let found = self.solve_phase1(new_state, depth - 1, time);
+            let found = self.solve_phase1(new_state, depth - 1);
 
             if found {
                 return true;
@@ -284,13 +266,7 @@ impl<'a> Solver<'a> {
         false
     }
 
-    fn solve_phase2(&mut self, state: Phase2State, depth: u8, time: Instant) -> bool {
-        if let Some(timeout) = self.timeout {
-            if time.elapsed() > timeout {
-                return true;
-            }
-        }
-
+    fn solve_phase2(&mut self, state: Phase2State, depth: u8) -> bool {
         if depth == 0 && state.is_solved() {
             let solution = Solution {
                 phase1: self.solution_phase1.clone(),
@@ -327,7 +303,7 @@ impl<'a> Solver<'a> {
             self.solution_phase2.push(*m);
 
             let new_state = state.next(&self.data_table.move_table, i);
-            let found = self.solve_phase2(new_state, depth - 1, time);
+            let found = self.solve_phase2(new_state, depth - 1);
 
             if found {
                 return true;
@@ -352,7 +328,7 @@ mod test {
         ];
         let state = CubieCube::from(&scramble);
         let table = DataTable::default();
-        let mut solver = Solver::new(&table, 23, None);
+        let mut solver = Solver::new(&table, 23);
         let solution = solver.solve(state);
         let solved_state = state.apply_moves(&solution.unwrap().get_all_moves());
 
