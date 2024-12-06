@@ -2656,8 +2656,6 @@ dependencies = [
 [[package]]
 name = "kewb"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "747485c35a8aed40879ecfc54fd14a323eefc3063c22d883e7e24980df9acfe6"
 dependencies = [
  "bincode",
  "rand",
