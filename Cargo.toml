@@ -10,6 +10,8 @@ bevy = "0.14.2"
 bevy_mod_picking = "0.20.1"
 rand = "*"
 bevy_egui = "0.30"
+lazy_static = "1.5.0"
+kewb = "0.4.2"
 
 [target.wasm32-unknown-unknown]
 runner = "wasm-server-runner"

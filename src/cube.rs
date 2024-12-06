@@ -38,11 +38,11 @@ pub struct Movement {
     pub direction: Direction,
 }
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Cube {
     pub gap: f32,
-    pub coord: [u32; 3],
-    colors: HashMap<Face, Color>,
+    pub coord: [i32; 3],
+    pub colors: HashMap<Face, Color>,
 }
 
 #[derive(Resource)]
@@ -53,8 +53,8 @@ pub struct CubeInfo {
     pub z: Option<Entity>,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
-enum Face {
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
+pub enum Face {
     LEFT,
     RIGHT,
     UP,
@@ -108,13 +108,13 @@ impl Cube {
 
     #[allow(unused)]
     fn down_dace(&self, setting: &Settings) -> bool { self.coord[1] == 0 }
-    fn up_face(&self, setting: &Settings) -> bool { self.coord[1] == setting.layers - 1 }
+    fn up_face(&self, setting: &Settings) -> bool { self.coord[1] as u32 == setting.layers - 1 }
     #[allow(unused)]
     fn left_face(&self, setting: &Settings) -> bool { self.coord[0] == 0 }
-    fn right_face(&self, setting: &Settings) -> bool { self.coord[0] == setting.layers - 1 }
+    fn right_face(&self, setting: &Settings) -> bool { self.coord[0] as u32 == setting.layers - 1 }
     #[allow(unused)]
     fn back_face(&self, setting: &Settings) -> bool { self.coord[2] == 0 }
-    fn front_face(&self, setting: &Settings) -> bool { self.coord[2] == setting.layers - 1 }
+    fn front_face(&self, setting: &Settings) -> bool { self.coord[2] as u32 == setting.layers - 1 }
 }
 
 impl Default for CubeInfo {
@@ -157,7 +157,7 @@ pub fn setup_cube(
                 }
 
                 let mut cube = Cube::default();
-                cube.coord = [x, y, z];
+                cube.coord = [x as i32, y as i32, z as i32];
                 cube.set_colors(&settings);
 
                 let id = commands.spawn((

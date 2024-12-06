@@ -5,7 +5,7 @@ use bevy_mod_picking::prelude::*;
 use bevy_mod_picking::prelude::Listener;
 use bevy::math::Vec3;
 use rand::Rng;
-use crate::{cube::{Cube, CubeInfo, Direction, Movement, RotateAxis, RotateX, RotateY, RotateZ}, settings::Settings};
+use crate::{cube::{Cube, CubeInfo, Direction, Movement, RotateAxis, RotateX, RotateY, RotateZ, Face}, settings::Settings};
 
 #[derive(Resource)]
 pub struct ActionStatus {
@@ -15,12 +15,16 @@ pub struct ActionStatus {
     pub drag_start: Option<Vec3>,
     pub drag_end: Option<Vec3>,
     pub selected_entity: Option<Entity>,
+    pub computing_solution: bool,
 }
 
 pub fn handle_drag_start(
     event: Listener<Pointer<DragStart>>,
     mut status: ResMut<ActionStatus>,
 ) {
+    if status.computing_solution {
+        return;
+    }
     if event.button == PointerButton::Secondary {
         return;
     }
@@ -38,6 +42,10 @@ pub fn handle_drag_move(
     mut status: ResMut<ActionStatus>,
     settings: Res<Settings>
 ) {
+    if status.computing_solution {
+        return;
+    }
+
     let c = settings.rotation_trigger_value;
     if !(status.drag_start.is_some() && status.drag_end.is_none()) {
         return;
@@ -98,7 +106,7 @@ pub fn handle_drag_move(
 
     let m = Movement {
         axis: axis,
-        layer: layer,
+        layer: layer as u32,
         direction: dir
     };
     info!("generate movement: {:?}", m);
@@ -109,6 +117,9 @@ pub fn handle_drag_move(
 pub fn handle_drag_end(
     mut status: ResMut<ActionStatus>,
 ) {
+    if status.computing_solution {
+        return;
+    }
     status.drag_end = None;
     status.drag_start = None;
     status.selected_entity = None;
@@ -159,7 +170,7 @@ pub fn frame_handler(
 
     for e in cube_info.cubes.iter() {
         let mut cube = cubes.get_mut(*e).unwrap();
-        if cube.coord[coord_idx] == movement.layer {
+        if cube.coord[coord_idx] == movement.layer as i32 {
             if let Ok(mut cube_transform) = query.get_mut(*e) {
                 cube_transform.rotate_around(Vec3::ZERO, quat);
             } else {
@@ -167,6 +178,7 @@ pub fn frame_handler(
             }
             if status.angle_to_process == 0.0 {
                 adjust_coords(&mut cube, &movement, &settings);
+                adjust_faces(&mut cube, &movement);
             }
         }
     }
@@ -177,27 +189,85 @@ fn adjust_coords(cube: &mut Cube, movement: &Movement, settings: &Settings) {
     if movement.axis == RotateAxis::X {
         cube.coord.swap(1, 2);
         if movement.direction == Direction::Clockwise {
-            cube.coord[2] = settings.layers - cube.coord[2] - 1;
+            cube.coord[2] = settings.layers as i32 - cube.coord[2] - 1;
         } else if movement.direction == Direction::CounterClockwise {
-            cube.coord[1] = settings.layers - cube.coord[1] - 1;
+            cube.coord[1] = settings.layers as i32 - cube.coord[1] - 1;
         }
     } else if movement.axis == RotateAxis::Y {
         cube.coord.swap(0, 2);
         if movement.direction == Direction::Clockwise {
-            cube.coord[0] = settings.layers - cube.coord[0] - 1;
+            cube.coord[0] = settings.layers as i32 - cube.coord[0] - 1;
         } else if movement.direction == Direction::CounterClockwise {
-            cube.coord[2] = settings.layers - cube.coord[2] - 1;
+            cube.coord[2] = settings.layers as i32 - cube.coord[2] - 1;
         }
     } else if movement.axis == RotateAxis::Z {
         cube.coord.swap(0, 1);
         if movement.direction == Direction::Clockwise {
-            cube.coord[1] = settings.layers - cube.coord[1] - 1;
+            cube.coord[1] = settings.layers as i32 - cube.coord[1] - 1;
         } else if movement.direction == Direction::CounterClockwise {
-            cube.coord[0] = settings.layers - cube.coord[0] - 1;
+            cube.coord[0] = settings.layers as i32 - cube.coord[0] - 1;
         }
     }
 
     // info!("{:?} -> {:?}", old, cube.coord);
+}
+
+fn adjust_faces(cube: &mut Cube, movement: &Movement) {
+    let up = *cube.colors.get(&Face::UP).unwrap();
+    let down = *cube.colors.get(&Face::DOWN).unwrap();
+    let front = *cube.colors.get(&Face::FRONT).unwrap();
+    let back = *cube.colors.get(&Face::BACK).unwrap();
+    let left = *cube.colors.get(&Face::LEFT).unwrap();
+    let right = *cube.colors.get(&Face::RIGHT).unwrap();
+    if movement.axis == RotateAxis::X {
+        if movement.direction == Direction::Clockwise {
+            cube.colors.insert(Face::UP, front);
+            cube.colors.insert(Face::DOWN, back);
+            cube.colors.insert(Face::FRONT, down);
+            cube.colors.insert(Face::BACK, up);
+            cube.colors.insert(Face::LEFT, left);
+            cube.colors.insert(Face::RIGHT, right);
+        } else if movement.direction == Direction::CounterClockwise {
+            cube.colors.insert(Face::UP, back);
+            cube.colors.insert(Face::DOWN, front);
+            cube.colors.insert(Face::FRONT, up);
+            cube.colors.insert(Face::BACK, down);
+            cube.colors.insert(Face::LEFT, left);
+            cube.colors.insert(Face::RIGHT, right);
+        }
+    } else if movement.axis == RotateAxis::Y {
+        if movement.direction == Direction::Clockwise {
+            cube.colors.insert(Face::UP, up);
+            cube.colors.insert(Face::DOWN, down);
+            cube.colors.insert(Face::FRONT, right);
+            cube.colors.insert(Face::BACK, left);
+            cube.colors.insert(Face::LEFT, front);
+            cube.colors.insert(Face::RIGHT, back);
+        } else if movement.direction == Direction::CounterClockwise {
+            cube.colors.insert(Face::UP, up);
+            cube.colors.insert(Face::DOWN, down);
+            cube.colors.insert(Face::FRONT, left);
+            cube.colors.insert(Face::BACK, right);
+            cube.colors.insert(Face::LEFT, back);
+            cube.colors.insert(Face::RIGHT, front);
+        }
+    } else if movement.axis == RotateAxis::Z {
+        if movement.direction == Direction::Clockwise {
+            cube.colors.insert(Face::UP, left);
+            cube.colors.insert(Face::DOWN, right);
+            cube.colors.insert(Face::FRONT, front);
+            cube.colors.insert(Face::BACK, back);
+            cube.colors.insert(Face::LEFT, down);
+            cube.colors.insert(Face::RIGHT, up);
+        } else if movement.direction == Direction::CounterClockwise {
+            cube.colors.insert(Face::UP, right);
+            cube.colors.insert(Face::DOWN, left);
+            cube.colors.insert(Face::FRONT, front);
+            cube.colors.insert(Face::BACK, back);
+            cube.colors.insert(Face::LEFT, up);
+            cube.colors.insert(Face::RIGHT, down);
+        }
+    }
 }
 
 pub fn gen_random_movements(steps: u32) -> VecDeque<Movement> {
